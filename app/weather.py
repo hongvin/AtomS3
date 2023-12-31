@@ -2,6 +2,7 @@ import os
 import wifi
 import time
 import socketpool
+import board
 import ssl
 import displayio
 import terminalio
@@ -9,13 +10,13 @@ import adafruit_requests
 import adafruit_imageload
 from adafruit_bitmap_font import bitmap_font
 from adafruit_display_text import bitmap_label
-from utils import connect_wifi, init_display
+from utils import connect_wifi
 
 font_file = "fonts/Rubik-Medium-Numeric-21.bdf"
 font = bitmap_font.load_font(font_file)
 UNITS = "metric"
 
-display=init_display()
+lcd = board.DISPLAY
 
 print('         Weather  ')
 print(' ')
@@ -43,8 +44,8 @@ image, palette = adafruit_imageload.load("/images/weather/icons8-sunny-64_.png")
 palette.make_transparent(0)
 
 tile_grid = displayio.TileGrid(image,pixel_shader = palette)
-tile_grid.x = display.width // 2 - tile_grid.tile_width // 2
-tile_grid.y = display.height // 2 - tile_grid.tile_height // 2 - 12
+tile_grid.x = lcd.width // 2 - tile_grid.tile_width // 2
+tile_grid.y = lcd.height // 2 - tile_grid.tile_height // 2 - 12
 
 group = displayio.Group()
 group.append(tile_grid)
@@ -52,16 +53,16 @@ group.append(tile_grid)
 # Create label for displaying temperature data
 text_area = bitmap_label.Label(font, scale=1)
 text_area.anchor_point = (0.5, 0.5)
-text_area.anchored_position = (display.width // 2, display.height - 15)
+text_area.anchored_position = (lcd.width // 2, lcd.height - 15)
 
 location_label = bitmap_label.Label(terminalio.FONT, scale=1, color=0x00ffff)
 location_label.anchor_point = (0.5, 0.5)
-location_label.anchored_position = (display.width // 2, 8)
+location_label.anchored_position = (lcd.width // 2, 8)
 location_label.text=os.getenv("LOCATION")
 
 description_label = bitmap_label.Label(terminalio.FONT, scale=1, color=0x00ff00)
 description_label.anchor_point = (0.5, 0.5)
-description_label.anchored_position = (display.width // 2, display.height // 2 +25)
+description_label.anchored_position = (lcd.width // 2, lcd.height // 2 +25)
 
 # Create main group to hold all display groups
 main_group = displayio.Group()
@@ -70,7 +71,7 @@ main_group.append(location_label)
 main_group.append(description_label)
 main_group.append(text_area)
 # Show the main group on the display
-display.root_group = main_group
+lcd.root_group = main_group
 
 # Define function to get the appropriate weather icon
 def get_weather_condition_icon(weather_condition):

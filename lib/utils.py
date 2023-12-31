@@ -1,11 +1,12 @@
 import os
 import time
 import displayio
-import busio
-import board
 import wifi
-import supervisor
-from adafruit_st7789 import ST7789
+import adafruit_imageload
+import busio
+import storage
+import digitalio
+import board
 
 def connect_wifi():
     if os.getenv("WIFI_SSID")=="":
@@ -29,24 +30,35 @@ def connect_wifi():
 def disconnect_wifi():
     wifi.radio.stop_station()
     wifi.radio.enabled=False
-    
-def init_display():
-    displayio.release_displays()
-    spi = busio.SPI(board.LCD_CLK,board.LCD_MOSI)
-    while not spi.try_lock():
-        pass
-    spi.configure(baudrate=24000000) # Configure SPI for 24MHz
-    spi.unlock()
-    display_bus = displayio.FourWire(spi,command=board.LCD_DC,chip_select=board.LCD_CS) 
-    display = ST7789(display_bus, width=128, height=128, colstart=2,rowstart=1)
 
-    TERMINAL_HEIGHT=display.height+20
-    display.root_group.scale = 1
-        
-    display.root_group[0].hidden = False
-    display.root_group[1].hidden = True # logo
-    display.root_group[2].hidden = True # status bar
-    supervisor.reset_terminal(display.width,TERMINAL_HEIGHT)
-    display.root_group[0].y = 0
+def mount_sd(sck,mosi,miso,cs):
+    # import sdcardio
+    import adafruit_sdcard
+    spi = busio.SPI(sck,mosi,miso)
+    # sdcard = sdcardio.SDCard(spi, cs)
+    cs = digitalio.DigitalInOut(cs)
+    sdcard = adafruit_sdcard.SDCard(spi, cs)
+    vfs = storage.VfsFat(sdcard)
+    storage.mount(vfs, "/sd")
 
-    return display
+def screenshot(name):
+    from adafruit_bitmapsaver import save_pixels
+    save_pixels(f'/sd/{name}.bmp')
+    print(f"> Screenshot taken, saved into /sd/{name}.bmp")
+
+def mount_screenshot(name,sck=board.D5,mosi=board.D6,miso=board.D7,cs=board.D8):
+    try:
+        mount_sd(sck,mosi,miso,cs)
+        screenshot(name)
+        return True
+    except Exception as e:
+        print('>Error: ',e)
+        return False
+
+def display_icon(img,x,y):
+    image, palette = adafruit_imageload.load(img,bitmap=displayio.Bitmap,palette=displayio.Palette)
+    palette.make_transparent(0)
+    tile_grid = displayio.TileGrid(image,pixel_shader = palette)
+    tile_grid.x = x
+    tile_grid.y = y
+    return tile_grid
